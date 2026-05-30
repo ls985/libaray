@@ -11,6 +11,9 @@ const PORT = Number(process.env.PORT || 3000);
 const DEFAULT_ENDPOINT =
   process.env.TRACEINT_GRAPHQL_ENDPOINT ||
   "https://wechat.v2.traceint.com/index.php/graphql/";
+const DEFAULT_WECHAT_OAUTH_URL =
+  process.env.WECHAT_OAUTH_URL ||
+  "https://open.weixin.qq.com/connect/oauth2/authorize?appid=wx2996d437cd442527&redirect_uri=https%3A%2F%2Fwechat.v2.traceint.com%2Findex.php%2Fgraphql%2F&response_type=code&scope=snsapi_userinfo&state=1#wechat_redirect";
 
 const DEFAULT_HEADERS = {
   Origin: "https://web.traceint.com",
@@ -275,6 +278,20 @@ function clientConfigFromBody(body) {
   };
 }
 
+function cookieFromSetCookie(headers) {
+  const raw =
+    typeof headers.getSetCookie === "function"
+      ? headers.getSetCookie()
+      : headers.get("set-cookie")
+        ? [headers.get("set-cookie")]
+        : [];
+  return raw
+    .flatMap((line) => String(line).split(/,(?=\s*[\w.-]+=)/))
+    .map((line) => line.split(";")[0].trim())
+    .filter(Boolean)
+    .join("; ");
+}
+
 function sendJson(res, status, payload) {
   res.writeHead(status, {
     "Content-Type": "application/json; charset=utf-8",
@@ -370,6 +387,45 @@ export async function handleApi(req, res, url) {
       ok: true,
       config: safeConfig({ endpoint: DEFAULT_ENDPOINT, headers: DEFAULT_HEADERS, cookie: "" }),
       stateless: true,
+    });
+  }
+
+  if (req.method === "GET" && url.pathname === "/api/oauth-url") {
+    return sendJson(res, 200, { ok: true, url: DEFAULT_WECHAT_OAUTH_URL });
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/oauth-cookie") {
+    const body = await readJson(req);
+    if (!body.url) {
+      const error = new Error("url is required");
+      error.status = 400;
+      throw error;
+    }
+
+    const target = new URL(body.url);
+    if (!["wechat.v2.traceint.com", "open.weixin.qq.com"].includes(target.hostname)) {
+      const error = new Error("Only WeChat/Traceint OAuth callback URLs are accepted");
+      error.status = 400;
+      throw error;
+    }
+
+    const response = await fetch(target, {
+      method: "GET",
+      redirect: "manual",
+      headers: {
+        ...DEFAULT_HEADERS,
+        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      },
+    });
+    const cookie = cookieFromSetCookie(response.headers);
+    const location = response.headers.get("location") || "";
+    return sendJson(res, 200, {
+      ok: true,
+      status: response.status,
+      cookie,
+      cookiePreview: cookie ? `${cookie.slice(0, 18)}...` : "",
+      location,
+      hasCookie: Boolean(cookie),
     });
   }
 

@@ -24,6 +24,10 @@ const el = {
   refererInput: $("refererInput"),
   uaInput: $("uaInput"),
   configState: $("configState"),
+  copyOauthBtn: $("copyOauthBtn"),
+  openOauthBtn: $("openOauthBtn"),
+  oauthCallbackInput: $("oauthCallbackInput"),
+  importOauthBtn: $("importOauthBtn"),
   saveConfigBtn: $("saveConfigBtn"),
   testCookieBtn: $("testCookieBtn"),
   clearConfigBtn: $("clearConfigBtn"),
@@ -336,6 +340,44 @@ async function saveConfig() {
   log(`配置已保存到当前浏览器；Cookie 长度 ${extractedCookie.length}；服务端不落盘保存 Cookie`);
 }
 
+async function getOauthUrl() {
+  const payload = await api("/api/oauth-url", null, "GET");
+  return payload.url;
+}
+
+async function copyOauthUrl() {
+  const url = await getOauthUrl();
+  await navigator.clipboard.writeText(url);
+  log("已复制微信授权链接。请在微信里打开它，完成跳转后复制最终链接回来。");
+}
+
+async function openOauthUrl() {
+  const url = await getOauthUrl();
+  window.open(url, "_blank", "noopener,noreferrer");
+  log("已打开微信授权链接。如果当前不是微信浏览器，建议复制链接到微信里打开。");
+}
+
+async function importOauthCookie() {
+  const callbackUrl = el.oauthCallbackInput.value.trim();
+  if (!callbackUrl) {
+    log("请先粘贴微信授权后跳转到的最终链接");
+    return;
+  }
+  const payload = await api("/api/oauth-cookie", { url: callbackUrl });
+  if (!payload.cookie) {
+    log("授权链接没有返回 Cookie；请确认粘贴的是微信授权后包含 code 的最终跳转链接", payload);
+    return;
+  }
+
+  const current = loadLocalConfig();
+  const config = { ...current, cookie: payload.cookie };
+  saveLocalConfig(config);
+  el.cookieInput.value = payload.cookie;
+  el.configState.textContent = `本机已保存 ${payload.cookiePreview}`;
+  state.demo = false;
+  log(`已从授权链接导入 Cookie：${payload.cookiePreview}`);
+}
+
 async function testCookie() {
   if (!loadLocalConfig().cookie) await saveConfig();
   const payload = await api("/api/libs", { auth: authPayload() });
@@ -504,6 +546,9 @@ function escapeHtml(value) {
 }
 
 function bindEvents() {
+  el.copyOauthBtn.addEventListener("click", () => copyOauthUrl().catch(reportError));
+  el.openOauthBtn.addEventListener("click", () => openOauthUrl().catch(reportError));
+  el.importOauthBtn.addEventListener("click", () => importOauthCookie().catch(reportError));
   el.saveConfigBtn.addEventListener("click", () => saveConfig().catch(reportError));
   el.testCookieBtn.addEventListener("click", () => testCookie().catch(reportError));
   el.clearConfigBtn.addEventListener("click", () => {

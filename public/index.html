@@ -41,6 +41,22 @@
         <p class="hint">
           最省事获取方式：手机代理/抓包工具里复制请求详情，整段粘贴到这里，点“提取并保存 Cookie”。
         </p>
+        <div class="quick-cookie">
+          <p class="hint">
+            更简单：在微信里打开授权链接，完成跳转后复制最终链接，粘到下面，点“从授权链接导入”。
+          </p>
+          <div class="actions">
+            <button id="copyOauthBtn" class="ghost">复制微信授权链接</button>
+            <button id="openOauthBtn" class="ghost">打开授权链接</button>
+          </div>
+          <label>
+            微信跳转后的最终链接
+            <textarea id="oauthCallbackInput" rows="3" placeholder="粘贴微信授权后跳转到的链接，通常包含 code=xxxx"></textarea>
+          </label>
+          <div class="actions">
+            <button id="importOauthBtn" class="secondary">从授权链接导入 Cookie</button>
+          </div>
+        </div>
         <details>
           <summary>高级 Header</summary>
           <label>
