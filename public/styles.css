@@ -75,6 +75,13 @@ h2 {
   line-height: 1.55;
 }
 
+.hint {
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
 .card {
   margin-top: 14px;
   padding: 16px;
@@ -183,6 +190,16 @@ button.ghost {
 button.small {
   padding: 7px 10px;
   font-size: 12px;
+}
+
+.badge.running {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.badge.warn {
+  background: #fff7ed;
+  color: #c2410c;
 }
 
 .chips {

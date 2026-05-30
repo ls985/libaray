@@ -10,6 +10,9 @@ const state = {
   selectedLib: null,
   layout: null,
   pickedSeat: null,
+  sniperTimer: null,
+  sniperRunning: false,
+  sniperRound: 0,
 };
 
 const $ = (id) => document.getElementById(id);
@@ -22,6 +25,7 @@ const el = {
   uaInput: $("uaInput"),
   configState: $("configState"),
   saveConfigBtn: $("saveConfigBtn"),
+  testCookieBtn: $("testCookieBtn"),
   clearConfigBtn: $("clearConfigBtn"),
   loadLibsBtn: $("loadLibsBtn"),
   demoBtn: $("demoBtn"),
@@ -34,6 +38,12 @@ const el = {
   pickedSeat: $("pickedSeat"),
   reserveBtn: $("reserveBtn"),
   refreshLayoutBtn: $("refreshLayoutBtn"),
+  sniperState: $("sniperState"),
+  sniperFloorSelect: $("sniperFloorSelect"),
+  sniperIntervalInput: $("sniperIntervalInput"),
+  sniperSeatKeywordInput: $("sniperSeatKeywordInput"),
+  startSniperBtn: $("startSniperBtn"),
+  stopSniperBtn: $("stopSniperBtn"),
   logBox: $("logBox"),
   clearLogBtn: $("clearLogBtn"),
 };
@@ -94,6 +104,43 @@ function authPayload() {
 
 function cookiePreview(cookie) {
   return cookie ? `${cookie.slice(0, 18)}...` : "";
+}
+
+function extractCookie(input) {
+  const text = String(input || "").trim();
+  if (!text) return "";
+
+  const cookieLine =
+    text.match(/(?:^|\n|\r)\s*cookie\s*:\s*([^\r\n]+)/i) ||
+    text.match(/cookie\s*:\s*([^'"\r\n]+)/i);
+  if (cookieLine) return cleanupCookie(cookieLine[1]);
+
+  const setCookieLines = [...text.matchAll(/(?:^|\n|\r)\s*set-cookie\s*:\s*([^\r\n]+)/gi)];
+  if (setCookieLines.length) {
+    return cleanupCookie(
+      setCookieLines
+        .map((match) => match[1].split(";")[0])
+        .filter(Boolean)
+        .join("; "),
+    );
+  }
+
+  const inline = text.match(/((?:[\w.-]+=[^;\s]+;\s*)+[\w.-]+=[^;\s]+)/);
+  if (inline) return cleanupCookie(inline[1]);
+
+  return cleanupCookie(text);
+}
+
+function cleanupCookie(cookie) {
+  return String(cookie || "")
+    .replace(/^cookie\s*:\s*/i, "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .join("; ")
+    .replaceAll(/;{2,}/g, ";")
+    .replaceAll(/\s*;\s*/g, "; ")
+    .trim();
 }
 
 function normalizeFloor(floor) {
@@ -232,6 +279,34 @@ function renderAll() {
   renderLibs();
   renderSelection();
   renderSeats();
+  renderSniperOptions();
+}
+
+function renderSniperOptions() {
+  const floors = [...new Set(state.libs.map((lib) => normalizeFloor(lib.lib_floor)))];
+  const current = el.sniperFloorSelect.value || state.selectedFloor;
+  el.sniperFloorSelect.textContent = "";
+
+  if (!floors.length) {
+    const option = document.createElement("option");
+    option.value = "";
+    option.textContent = "请先加载场馆";
+    el.sniperFloorSelect.appendChild(option);
+    el.startSniperBtn.disabled = true;
+  } else {
+    for (const floor of floors) {
+      const option = document.createElement("option");
+      option.value = floor;
+      option.textContent = floor;
+      if (floor === current) option.selected = true;
+      el.sniperFloorSelect.appendChild(option);
+    }
+    el.startSniperBtn.disabled = state.sniperRunning;
+  }
+
+  el.stopSniperBtn.disabled = !state.sniperRunning;
+  el.sniperState.textContent = state.sniperRunning ? `运行中 #${state.sniperRound}` : "未启动";
+  el.sniperState.className = `badge ${state.sniperRunning ? "running" : ""}`;
 }
 
 async function loadConfig() {
@@ -245,9 +320,10 @@ async function loadConfig() {
 }
 
 async function saveConfig() {
+  const extractedCookie = extractCookie(el.cookieInput.value);
   const config = {
     endpoint: el.endpointInput.value.trim() || DEFAULT_ENDPOINT,
-    cookie: el.cookieInput.value.trim(),
+    cookie: extractedCookie,
     origin: el.originInput.value.trim() || DEFAULT_ORIGIN,
     referer: el.refererInput.value.trim() || DEFAULT_REFERER,
     userAgent: el.uaInput.value.trim() || navigator.userAgent,
@@ -255,8 +331,25 @@ async function saveConfig() {
   saveLocalConfig(config);
   const payload = await api("/api/config", config);
   el.configState.textContent = payload.config.hasCookie ? `本机已保存 ${payload.config.cookiePreview}` : "本机未保存 Cookie";
+  el.cookieInput.value = extractedCookie;
   state.demo = false;
-  log("配置已保存到当前浏览器；服务端不落盘保存 Cookie");
+  log(`配置已保存到当前浏览器；Cookie 长度 ${extractedCookie.length}；服务端不落盘保存 Cookie`);
+}
+
+async function testCookie() {
+  if (!loadLocalConfig().cookie) await saveConfig();
+  const payload = await api("/api/libs", { auth: authPayload() });
+  const libs = payload.libs || [];
+  log(`Cookie 测试成功：加载到 ${libs.length} 个区域`);
+  if (libs.length) {
+    state.demo = false;
+    state.libs = libs;
+    state.selectedFloor = "";
+    state.selectedLib = null;
+    state.layout = null;
+    state.pickedSeat = null;
+    renderAll();
+  }
 }
 
 async function loadLibs() {
@@ -289,16 +382,116 @@ async function loadLayout() {
   });
 }
 
-async function reservePickedSeat() {
-  if (!state.selectedLib || !state.pickedSeat) return;
-  const path = state.demo ? "/api/demo/reserve" : "/api/reserve";
+async function fetchLayoutForLib(lib) {
+  const path = state.demo ? "/api/demo/layout" : "/api/layout";
   const payload = await api(path, {
-    libId: state.selectedLib.lib_id,
-    seatKey: state.pickedSeat.key,
+    libId: lib.lib_id,
     mode: el.modeSelect.value,
     auth: authPayload(),
   });
+  return payload.layout || {};
+}
+
+async function reserveSeat(lib, seat) {
+  const path = state.demo ? "/api/demo/reserve" : "/api/reserve";
+  return api(path, {
+    libId: lib.lib_id,
+    seatKey: seat.key,
+    mode: el.modeSelect.value,
+    auth: authPayload(),
+  });
+}
+
+async function reservePickedSeat() {
+  if (!state.selectedLib || !state.pickedSeat) return;
+  const payload = await reserveSeat(state.selectedLib, state.pickedSeat);
   log("预约请求已提交", payload.result);
+}
+
+function findFreeSeat(layout, keyword) {
+  const seats = layout?.seats || [];
+  const normalizedKeyword = String(keyword || "").trim().toLowerCase();
+  return seats.find((seat) => {
+    if (!seatFree(seat)) return false;
+    if (!normalizedKeyword) return true;
+    const haystack = `${seat.name || ""} ${seat.key || ""} ${seat.x || ""}-${seat.y || ""}`.toLowerCase();
+    return haystack.includes(normalizedKeyword);
+  });
+}
+
+async function sniperTick() {
+  if (!state.sniperRunning) return;
+  state.sniperRound += 1;
+  renderSniperOptions();
+
+  const floor = el.sniperFloorSelect.value;
+  const keyword = el.sniperSeatKeywordInput.value;
+  const libs = state.libs.filter((lib) => normalizeFloor(lib.lib_floor) === floor && lib.is_open !== 0);
+
+  if (!libs.length) {
+    log(`闲时抢座：楼层 ${floor} 无开放区域`);
+    scheduleNextSniperTick();
+    return;
+  }
+
+  log(`闲时抢座第 ${state.sniperRound} 轮：扫描 ${floor}，${libs.length} 个区域`);
+
+  for (const lib of libs) {
+    if (!state.sniperRunning) return;
+    try {
+      const layout = await fetchLayoutForLib(lib);
+      const seat = findFreeSeat(layout, keyword);
+      if (!seat) {
+        log(`未发现空位：${lib.lib_name}`);
+        continue;
+      }
+
+      log(`发现空位，准备预约：${lib.lib_name} / ${seat.name || seat.key}`, {
+        libId: lib.lib_id,
+        seatKey: seat.key,
+      });
+      const result = await reserveSeat(lib, seat);
+      stopSniper();
+      state.selectedFloor = normalizeFloor(lib.lib_floor);
+      state.selectedLib = lib;
+      state.layout = layout;
+      state.pickedSeat = seat;
+      renderAll();
+      log("闲时抢座已提交预约并停止监控", result.result);
+      return;
+    } catch (error) {
+      log(`扫描失败：${lib.lib_name}：${error.message}`, error.detail);
+    }
+  }
+
+  scheduleNextSniperTick();
+}
+
+function scheduleNextSniperTick() {
+  if (!state.sniperRunning) return;
+  const seconds = Math.max(2, Math.min(60, Number(el.sniperIntervalInput.value || 5)));
+  state.sniperTimer = window.setTimeout(() => sniperTick().catch(reportError), seconds * 1000);
+}
+
+function startSniper() {
+  if (state.sniperRunning) return;
+  if (!state.libs.length) {
+    log("请先加载场馆，再启动闲时抢座");
+    return;
+  }
+  state.sniperRunning = true;
+  state.sniperRound = 0;
+  renderSniperOptions();
+  log(`闲时抢座已启动：楼层 ${el.sniperFloorSelect.value}，间隔 ${el.sniperIntervalInput.value || 5} 秒`);
+  sniperTick().catch(reportError);
+}
+
+function stopSniper() {
+  if (state.sniperTimer) window.clearTimeout(state.sniperTimer);
+  state.sniperTimer = null;
+  state.sniperRunning = false;
+  renderSniperOptions();
+  log("闲时抢座已停止");
 }
 
 function escapeHtml(value) {
@@ -312,6 +505,7 @@ function escapeHtml(value) {
 
 function bindEvents() {
   el.saveConfigBtn.addEventListener("click", () => saveConfig().catch(reportError));
+  el.testCookieBtn.addEventListener("click", () => testCookie().catch(reportError));
   el.clearConfigBtn.addEventListener("click", () => {
     clearLocalConfig();
     loadConfig().then(() => log("已清除当前浏览器里的配置")).catch(reportError);
@@ -319,6 +513,8 @@ function bindEvents() {
   el.loadLibsBtn.addEventListener("click", () => loadLibs().catch(reportError));
   el.refreshLayoutBtn.addEventListener("click", () => loadLayout().catch(reportError));
   el.reserveBtn.addEventListener("click", () => reservePickedSeat().catch(reportError));
+  el.startSniperBtn.addEventListener("click", () => startSniper());
+  el.stopSniperBtn.addEventListener("click", () => stopSniper());
   el.modeSelect.addEventListener("change", () => {
     if (state.selectedLib) loadLayout().catch(reportError);
   });

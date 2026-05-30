@@ -31,9 +31,16 @@
           <input id="endpointInput" autocomplete="off" />
         </label>
         <label>
-          Cookie
-          <textarea id="cookieInput" rows="4" placeholder="粘贴抓包得到的 Cookie"></textarea>
+          Cookie / 任意请求文本
+          <textarea
+            id="cookieInput"
+            rows="4"
+            placeholder="最简单：粘贴包含 Cookie 的任意请求头文本，系统会自动提取。也可以只粘贴 wechatSESS_ID=xxx; SERVERID=xxx"
+          ></textarea>
         </label>
+        <p class="hint">
+          最省事获取方式：手机代理/抓包工具里复制请求详情，整段粘贴到这里，点“提取并保存 Cookie”。
+        </p>
         <details>
           <summary>高级 Header</summary>
           <label>
@@ -50,7 +57,8 @@
           </label>
         </details>
         <div class="actions">
-          <button id="saveConfigBtn">保存配置</button>
+          <button id="saveConfigBtn">提取并保存 Cookie</button>
+          <button id="testCookieBtn" class="secondary">测试 Cookie</button>
           <button id="loadLibsBtn" class="secondary">加载场馆</button>
           <button id="clearConfigBtn" class="ghost">清除配置</button>
         </div>
@@ -84,6 +92,32 @@
         <div class="actions sticky">
           <button id="reserveBtn" disabled>提交预约</button>
           <button id="refreshLayoutBtn" class="secondary" disabled>刷新座位</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="section-title">
+          <h2>4. 闲时抢座</h2>
+          <span id="sniperState" class="badge">未启动</span>
+        </div>
+        <p class="hint">
+          选择一个楼层后启动监控。系统会轮询该楼层所有区域；一发现空位，就按当前预约模式自动提交第一个可用座位。
+        </p>
+        <label>
+          监控楼层
+          <select id="sniperFloorSelect"></select>
+        </label>
+        <label>
+          轮询间隔（秒）
+          <input id="sniperIntervalInput" type="number" min="2" max="60" value="5" />
+        </label>
+        <label>
+          座位关键词（可选）
+          <input id="sniperSeatKeywordInput" placeholder="例如 靠窗、101；留空则抢任意空位" />
+        </label>
+        <div class="actions">
+          <button id="startSniperBtn" disabled>启动闲时抢座</button>
+          <button id="stopSniperBtn" class="ghost" disabled>停止</button>
         </div>
       </section>
 

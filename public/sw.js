@@ -1,4 +1,4 @@
-const CACHE_NAME = "igotolib-mobile-web-v1";
+const CACHE_NAME = "igotolib-mobile-web-v2";
 const STATIC_ASSETS = [
   "/",
   "/index.html",
