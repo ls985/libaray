@@ -110,6 +110,14 @@ function cookiePreview(cookie) {
   return cookie ? `${cookie.slice(0, 18)}...` : "";
 }
 
+function hasOnlyInfraCookie(cookie) {
+  const names = String(cookie || "")
+    .split(";")
+    .map((part) => part.trim().split("=")[0])
+    .filter(Boolean);
+  return names.length > 0 && names.every((name) => ["SERVERID", "Hm_lvt", "Hm_lpvt"].some((prefix) => name.startsWith(prefix)));
+}
+
 function extractCookie(input) {
   const text = String(input || "").trim();
   if (!text) return "";
@@ -366,6 +374,10 @@ async function importOauthCookie() {
   const payload = await api("/api/oauth-cookie", { url: callbackUrl });
   if (!payload.cookie) {
     log("授权链接没有返回 Cookie；请确认粘贴的是微信授权后包含 code 的最终跳转链接", payload);
+    return;
+  }
+  if (hasOnlyInfraCookie(payload.cookie)) {
+    log("授权链接只返回了 SERVERID/Hm 这类基础 Cookie，还不是登录 Cookie；请重新在微信里打开授权链接，或改用 Reqable 复制 Response Headers 里的 Set-Cookie", payload);
     return;
   }
 

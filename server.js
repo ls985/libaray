@@ -292,6 +292,54 @@ function cookieFromSetCookie(headers) {
     .join("; ");
 }
 
+function mergeCookieStrings(...cookies) {
+  const jar = new Map();
+  for (const cookie of cookies) {
+    for (const part of String(cookie || "").split(";")) {
+      const trimmed = part.trim();
+      if (!trimmed || !trimmed.includes("=")) continue;
+      const index = trimmed.indexOf("=");
+      jar.set(trimmed.slice(0, index), trimmed.slice(index + 1));
+    }
+  }
+  return [...jar.entries()].map(([key, value]) => `${key}=${value}`).join("; ");
+}
+
+async function fetchOauthCookie(startUrl) {
+  let currentUrl = startUrl;
+  let cookie = "";
+  const chain = [];
+
+  for (let i = 0; i < 6; i += 1) {
+    const response = await fetch(currentUrl, {
+      method: "GET",
+      redirect: "manual",
+      headers: {
+        ...DEFAULT_HEADERS,
+        Cookie: cookie,
+        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      },
+    });
+    const setCookie = cookieFromSetCookie(response.headers);
+    cookie = mergeCookieStrings(cookie, setCookie);
+    const location = response.headers.get("location") || "";
+    chain.push({
+      url: currentUrl,
+      status: response.status,
+      setCookiePreview: setCookie ? `${setCookie.slice(0, 80)}...` : "",
+      location,
+    });
+
+    if (!location || response.status < 300 || response.status >= 400) {
+      return { cookie, status: response.status, location, chain };
+    }
+
+    currentUrl = new URL(location, currentUrl).toString();
+  }
+
+  return { cookie, status: 0, location: currentUrl, chain };
+}
+
 function sendJson(res, status, payload) {
   res.writeHead(status, {
     "Content-Type": "application/json; charset=utf-8",
@@ -409,22 +457,15 @@ export async function handleApi(req, res, url) {
       throw error;
     }
 
-    const response = await fetch(target, {
-      method: "GET",
-      redirect: "manual",
-      headers: {
-        ...DEFAULT_HEADERS,
-        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-      },
-    });
-    const cookie = cookieFromSetCookie(response.headers);
-    const location = response.headers.get("location") || "";
+    const oauth = await fetchOauthCookie(target.toString());
+    const cookie = oauth.cookie;
     return sendJson(res, 200, {
       ok: true,
-      status: response.status,
+      status: oauth.status,
       cookie,
       cookiePreview: cookie ? `${cookie.slice(0, 18)}...` : "",
-      location,
+      location: oauth.location,
+      chain: oauth.chain,
       hasCookie: Boolean(cookie),
     });
   }
