@@ -305,8 +305,41 @@ function mergeCookieStrings(...cookies) {
   return [...jar.entries()].map(([key, value]) => `${key}=${value}`).join("; ");
 }
 
+function normalizeTraceintOauthCallback(url) {
+  const normalized = new URL(url);
+  if (normalized.hostname === "wechat.v2.traceint.com") {
+    normalized.protocol = "https:";
+    if (normalized.pathname === "/index.php/graphql/") {
+      normalized.pathname = "/index.php/graphql";
+    }
+  }
+  return normalized.toString();
+}
+
+function isOnlyInfraCookie(cookie) {
+  const names = String(cookie || "")
+    .split(";")
+    .map((part) => part.trim().split("=")[0])
+    .filter(Boolean);
+  return names.length > 0 && names.every((name) => ["SERVERID", "Hm_lvt", "Hm_lpvt"].some((prefix) => name.startsWith(prefix)));
+}
+
+function oauthCallbackCandidates(inputUrl) {
+  const url = new URL(inputUrl);
+  const code = url.searchParams.get("code");
+  const state = url.searchParams.get("state") || "1";
+  const candidates = [normalizeTraceintOauthCallback(url.toString())];
+  if (url.hostname === "wechat.v2.traceint.com" && code) {
+    candidates.push(`https://wechat.v2.traceint.com/index.php/graphql?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}`);
+    candidates.push(`https://wechat.v2.traceint.com/index.php/graphql/?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}`);
+    candidates.push(`http://wechat.v2.traceint.com/index.php/graphql?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}`);
+    candidates.push(`http://wechat.v2.traceint.com/index.php/graphql/?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}`);
+  }
+  return [...new Set(candidates)];
+}
+
 async function fetchOauthCookie(startUrl) {
-  let currentUrl = startUrl;
+  let currentUrl = normalizeTraceintOauthCallback(startUrl);
   let cookie = "";
   const chain = [];
 
@@ -334,10 +367,23 @@ async function fetchOauthCookie(startUrl) {
       return { cookie, status: response.status, location, chain };
     }
 
-    currentUrl = new URL(location, currentUrl).toString();
+    currentUrl = normalizeTraceintOauthCallback(new URL(location, currentUrl).toString());
   }
 
   return { cookie, status: 0, location: currentUrl, chain };
+}
+
+async function fetchBestOauthCookie(startUrl) {
+  const attempts = [];
+  for (const candidate of oauthCallbackCandidates(startUrl)) {
+    const result = await fetchOauthCookie(candidate);
+    attempts.push({ candidate, ...result });
+    if (result.cookie && !isOnlyInfraCookie(result.cookie)) {
+      return { ...result, attempts };
+    }
+  }
+  const fallback = attempts[0] || { cookie: "", status: 0, location: "", chain: [] };
+  return { ...fallback, attempts };
 }
 
 function sendJson(res, status, payload) {
@@ -457,7 +503,7 @@ export async function handleApi(req, res, url) {
       throw error;
     }
 
-    const oauth = await fetchOauthCookie(target.toString());
+    const oauth = await fetchBestOauthCookie(target.toString());
     const cookie = oauth.cookie;
     return sendJson(res, 200, {
       ok: true,
@@ -466,6 +512,12 @@ export async function handleApi(req, res, url) {
       cookiePreview: cookie ? `${cookie.slice(0, 18)}...` : "",
       location: oauth.location,
       chain: oauth.chain,
+      attempts: oauth.attempts?.map((attempt) => ({
+        candidate: attempt.candidate,
+        status: attempt.status,
+        cookiePreview: attempt.cookie ? `${attempt.cookie.slice(0, 80)}...` : "",
+        location: attempt.location,
+      })),
       hasCookie: Boolean(cookie),
     });
   }
