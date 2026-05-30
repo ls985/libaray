@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/index.js"
+    }
+  ],
+  "env": {
+    "TRACEINT_GRAPHQL_ENDPOINT": "https://wechat.v2.traceint.com/index.php/graphql/"
+  }
+}

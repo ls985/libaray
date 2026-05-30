@@ -59,7 +59,7 @@ http://192.168.1.10:3000
 
 ## 部署建议
 
-如果你希望手机只点一个公网链接，不需要电脑参与，把项目部署到 Render / Railway / VPS。
+如果你希望手机只点一个公网链接，不需要电脑参与，把项目部署到 Vercel。
 
 最短路径见：
 
@@ -75,6 +75,7 @@ node server.js
 
 免费部署可以选：
 
+- Vercel
 - Render Web Service
 - Railway
 - Fly.io

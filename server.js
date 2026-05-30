@@ -283,7 +283,7 @@ function sendJson(res, status, payload) {
   res.end(JSON.stringify(payload));
 }
 
-function sendError(res, error) {
+export function sendError(res, error) {
   const status = Number(error.status || 500);
   sendJson(res, status, {
     ok: false,
@@ -360,7 +360,7 @@ function isFreeSeat(seat) {
   return ["0", "false", "free", "idle", "available", ""].includes(status);
 }
 
-async function handleApi(req, res, url) {
+export async function handleApi(req, res, url) {
   if (req.method === "GET" && url.pathname === "/api/health") {
     return sendJson(res, 200, { ok: true, service: "igotolib-mobile-web", stateless: true });
   }
@@ -473,19 +473,21 @@ async function serveStatic(req, res, url) {
   res.end(data);
 }
 
-const server = http.createServer(async (req, res) => {
-  const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
-  try {
-    if (url.pathname.startsWith("/api/")) {
-      await handleApi(req, res, url);
-    } else {
-      await serveStatic(req, res, url);
+if (!process.env.VERCEL) {
+  const server = http.createServer(async (req, res) => {
+    const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
+    try {
+      if (url.pathname.startsWith("/api/")) {
+        await handleApi(req, res, url);
+      } else {
+        await serveStatic(req, res, url);
+      }
+    } catch (error) {
+      sendError(res, error);
     }
-  } catch (error) {
-    sendError(res, error);
-  }
-});
+  });
 
-server.listen(PORT, "0.0.0.0", () => {
-  console.log(`igotolib-mobile-web listening on http://localhost:${PORT}`);
-});
+  server.listen(PORT, "0.0.0.0", () => {
+    console.log(`igotolib-mobile-web listening on http://localhost:${PORT}`);
+  });
+}

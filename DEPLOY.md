@@ -8,43 +8,40 @@ https://igotolib-mobile-web.onrender.com
 
 手机只需要打开这个链接即可使用，不需要电脑运行 `node server.js`。
 
-## 最简单方案：Render 免费部署
+## 最简单方案：Vercel 免费部署
 
 ### 1. 上传到 GitHub
 
-在当前目录初始化并提交：
+当前项目已经推送到：
 
-```powershell
-git init
-git add .
-git commit -m "init igotolib mobile web"
+```text
+https://github.com/ls985/libaray
 ```
 
-然后新建一个 GitHub 仓库，把代码推上去。
-
-### 2. Render 创建 Web Service
+### 2. Vercel 导入 GitHub 仓库
 
 打开：
 
 ```text
-https://render.com
+https://vercel.com
 ```
 
 按顺序：
 
-1. 登录 Render
-2. New
-3. Web Service
-4. 选择刚才的 GitHub 仓库
-5. Render 会读取 `render.yaml`
-6. 确认创建
+1. 用 GitHub 登录 Vercel
+2. Add New Project
+3. Import `ls985/libaray`
+4. Framework Preset 选择 `Other`
+5. Build Command 留空或填 `npm install --omit=dev`
+6. Output Directory 留空
+7. Deploy
 
 ### 3. 得到公网链接
 
-部署完成后，Render 会给一个链接：
+部署完成后，Vercel 会给一个链接：
 
 ```text
-https://你的服务名.onrender.com
+https://libaray-xxxx.vercel.app
 ```
 
 把这个链接发到手机，手机点开即可使用。
@@ -63,10 +60,11 @@ https://你的服务名.onrender.com
 
 - Cookie 只保存在手机浏览器本地。
 - 服务端不保存 Cookie。
-- Render 免费实例空闲后会休眠，第一次打开可能慢几十秒。
-- 如果比赛演示需要稳定，建议提前打开一次链接唤醒。
+- Vercel Serverless 没有常驻进程，适合当前这种“网页 + API 代理”。
 
-## Docker 部署
+## 备选：Render / Docker
+
+如果你以后有可用 Render 或 VPS，也可以继续用 `render.yaml` 或 Docker。
 
 如果你有 VPS：
 
