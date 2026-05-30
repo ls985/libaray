@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: igotolib-mobile-web
+    runtime: node
+    plan: free
+    buildCommand: npm install --omit=dev
+    startCommand: npm start
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: 24.16.0
+      - key: TRACEINT_GRAPHQL_ENDPOINT
+        value: https://wechat.v2.traceint.com/index.php/graphql/

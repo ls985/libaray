@@ -1,0 +1,19 @@
+{
+  "name": "我去图书馆手机选座",
+  "short_name": "图书馆选座",
+  "description": "手机端选择楼层、区域和座位的我去图书馆 Web 客户端",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f6f7fb",
+  "theme_color": "#ff4f87",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

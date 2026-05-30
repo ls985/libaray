@@ -1,0 +1,14 @@
+{
+  "name": "igotolib-mobile-web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Mobile web client for library seat selection and reservation.",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

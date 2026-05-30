@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#ff4f87" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="图书馆选座" />
+    <title>我去图书馆 - 手机选座</title>
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="app">
+      <header class="hero">
+        <div>
+          <p class="eyebrow">Mobile Web</p>
+          <h1>我去图书馆选座</h1>
+          <p class="sub">选择楼层、区域、座位后提交预约；Cookie 只保存在当前手机浏览器。</p>
+        </div>
+        <button id="demoBtn" class="ghost">演示模式</button>
+      </header>
+
+      <section class="card">
+        <div class="section-title">
+          <h2>1. 接口配置</h2>
+          <span id="configState" class="badge">未检测</span>
+        </div>
+        <label>
+          GraphQL Endpoint
+          <input id="endpointInput" autocomplete="off" />
+        </label>
+        <label>
+          Cookie
+          <textarea id="cookieInput" rows="4" placeholder="粘贴抓包得到的 Cookie"></textarea>
+        </label>
+        <details>
+          <summary>高级 Header</summary>
+          <label>
+            Origin
+            <input id="originInput" autocomplete="off" />
+          </label>
+          <label>
+            Referer
+            <input id="refererInput" autocomplete="off" />
+          </label>
+          <label>
+            User-Agent
+            <textarea id="uaInput" rows="2"></textarea>
+          </label>
+        </details>
+        <div class="actions">
+          <button id="saveConfigBtn">保存配置</button>
+          <button id="loadLibsBtn" class="secondary">加载场馆</button>
+          <button id="clearConfigBtn" class="ghost">清除配置</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="section-title">
+          <h2>2. 选择楼层</h2>
+          <span id="libCount" class="badge">0 个区域</span>
+        </div>
+        <div id="floorChips" class="chips empty">暂无楼层</div>
+        <div id="libList" class="lib-list"></div>
+      </section>
+
+      <section class="card">
+        <div class="section-title">
+          <h2>3. 选择座位</h2>
+          <select id="modeSelect">
+            <option value="reserve">当天预约 reserve</option>
+            <option value="prereserve">明日预约 prereserve</option>
+          </select>
+        </div>
+        <div id="selectedLib" class="selected">未选择区域</div>
+        <div class="legend">
+          <span><i class="dot free"></i>可选</span>
+          <span><i class="dot busy"></i>不可选</span>
+          <span><i class="dot picked"></i>已选</span>
+        </div>
+        <div id="seatGrid" class="seat-grid empty">选择区域后加载座位</div>
+        <div id="pickedSeat" class="selected">未选择座位</div>
+        <div class="actions sticky">
+          <button id="reserveBtn" disabled>提交预约</button>
+          <button id="refreshLayoutBtn" class="secondary" disabled>刷新座位</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="section-title">
+          <h2>运行日志</h2>
+          <button id="clearLogBtn" class="ghost small">清空</button>
+        </div>
+        <pre id="logBox" class="log"></pre>
+      </section>
+    </main>
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>
