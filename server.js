@@ -13,7 +13,7 @@ const DEFAULT_ENDPOINT =
   "https://wechat.v2.traceint.com/index.php/graphql/";
 const DEFAULT_WECHAT_OAUTH_URL =
   process.env.WECHAT_OAUTH_URL ||
-  "https://open.weixin.qq.com/connect/oauth2/authorize?appid=wx2996d437cd442527&redirect_uri=https%3A%2F%2Fwechat.v2.traceint.com%2Findex.php%2Fgraphql%2F&response_type=code&scope=snsapi_userinfo&state=1#wechat_redirect";
+  "https://open.weixin.qq.com/connect/oauth2/authorize?appid=wx2996d437cd442527&redirect_uri=https://wechat.v2.traceint.com/index.php/graphql&response_type=code&scope=snsapi_userinfo&state=1";
 
 const DEFAULT_HEADERS = {
   Origin: "https://web.traceint.com",

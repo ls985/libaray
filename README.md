@@ -53,7 +53,8 @@ http://192.168.1.10:3000
 
 ### 方式 A：微信授权链接
 
-1. 点“复制微信授权链接”。
+1. 点“复制微信授权链接”。当前使用 APK 中同款授权链接：
+   `https://open.weixin.qq.com/connect/oauth2/authorize?appid=wx2996d437cd442527&redirect_uri=https://wechat.v2.traceint.com/index.php/graphql&response_type=code&scope=snsapi_userinfo&state=1`
 2. 在微信里打开复制的链接。
 3. 完成跳转后，复制最终打开的链接；通常里面会有 `code=xxxx`。
 4. 粘贴到“微信跳转后的最终链接”。
